@@ -4,6 +4,9 @@ import com.github.tartaricacid.swapadoll.block.PlayerDollBlock;
 import com.github.tartaricacid.swapadoll.blockentity.PlayerDollBlockEntity;
 import com.github.tartaricacid.swapadoll.client.model.PlayerDollModel;
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.math.Axis;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
 import net.minecraft.client.renderer.PlayerSkinRenderCache;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
@@ -11,11 +14,16 @@ import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
 import net.minecraft.client.renderer.feature.ModelFeatureRenderer;
 import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.network.chat.Component;
+import net.minecraft.util.FormattedCharSequence;
+import net.minecraft.util.StringUtil;
 import net.minecraft.util.Unit;
 import net.minecraft.world.entity.player.PlayerModelType;
 import net.minecraft.world.item.component.ResolvableProfile;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
+
+import java.util.List;
 
 import static net.minecraft.client.renderer.blockentity.SkullBlockRenderer.TRANSFORMATIONS;
 
@@ -23,11 +31,13 @@ public class PlayerDollBlockRenderer implements BlockEntityRenderer<PlayerDollBl
     private final PlayerSkinRenderCache playerSkinRenderCache;
     private final PlayerDollModel slimModel;
     private final PlayerDollModel wideModel;
+    private final Font font;
 
     public PlayerDollBlockRenderer(BlockEntityRendererProvider.Context context) {
         this.playerSkinRenderCache = context.playerSkinRenderCache();
         this.slimModel = PlayerDollModel.SLIM_MODEL.get();
         this.wideModel = PlayerDollModel.WIDE_MODEL.get();
+        this.font = context.font();
     }
 
     @Override
@@ -45,6 +55,7 @@ public class PlayerDollBlockRenderer implements BlockEntityRenderer<PlayerDollBl
     ) {
         BlockEntityRenderer.super.extractRenderState(doll, state, partialTicks, cameraPosition, breakProgress);
         state.pose = doll.getPose();
+        state.shortContext = doll.getShortContent();
 
         int rot = doll.getBlockState().getValue(PlayerDollBlock.ROTATION);
         state.transformation = TRANSFORMATIONS.freeTransformations(rot);
@@ -66,15 +77,46 @@ public class PlayerDollBlockRenderer implements BlockEntityRenderer<PlayerDollBl
     }
 
     @Override
-    public void submit(PlayerDollRenderState state, PoseStack poseStack, SubmitNodeCollector submitNodeCollector, CameraRenderState camera) {
-        if (state.model == null) {
-            return;
+    public void submit(PlayerDollRenderState state, PoseStack poseStack, SubmitNodeCollector submitNode, CameraRenderState camera) {
+        if (state.model != null) {
+            submitBody(state, poseStack, submitNode);
         }
+        if (!StringUtil.isBlank(state.shortContext)) {
+            submitText(state, poseStack, submitNode, camera);
+        }
+    }
+
+    private void submitBody(PlayerDollRenderState state, PoseStack poseStack, SubmitNodeCollector submitNodeCollector) {
         poseStack.pushPose();
         poseStack.translate(0, 1.5, 0);
         poseStack.mulPose(state.transformation);
         submitNodeCollector.submitModel(state.model, Unit.INSTANCE, poseStack, state.renderType,
                 state.lightCoords, OverlayTexture.NO_OVERLAY, 0, state.breakProgress);
+        poseStack.popPose();
+    }
+
+    private void submitText(PlayerDollRenderState state, PoseStack poseStack, SubmitNodeCollector submitNode, CameraRenderState camera) {
+        poseStack.pushPose();
+        poseStack.translate(0.5, 1.625, 0.5);
+        poseStack.mulPose(Axis.YN.rotationDegrees(camera.yRot));
+        poseStack.mulPose(Axis.XN.rotationDegrees(-camera.xRot));
+        poseStack.scale(-0.025F, -0.025F, -0.025F);
+
+        float opacity = Minecraft.getInstance().options.getBackgroundOpacity(0.25F);
+        int bgColor = (int) (opacity * 255.0F) << 24;
+
+        Component component = Component.literal(state.shortContext);
+        List<FormattedCharSequence> split = this.font.split(component, 100);
+
+        int yStart = 28 - split.size() * 11;
+        for (FormattedCharSequence sequence : split) {
+            float currentLineWidth = (float) (-this.font.width(sequence) / 2);
+            submitNode.submitText(poseStack, currentLineWidth, yStart, sequence,
+                    false, Font.DisplayMode.NORMAL, state.lightCoords,
+                    0xFFFFFFFF, bgColor, 0);
+            yStart += 11;
+        }
+
         poseStack.popPose();
     }
 }

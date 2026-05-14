@@ -1,13 +1,22 @@
 package com.github.tartaricacid.swapadoll.block;
 
 import com.github.tartaricacid.swapadoll.blockentity.PlayerDollBlockEntity;
+import com.github.tartaricacid.swapadoll.client.gui.ScreenProxy;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.*;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
@@ -15,8 +24,10 @@ import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.IntegerProperty;
 import net.minecraft.world.level.block.state.properties.RotationSegment;
+import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
+import org.apache.commons.lang3.StringUtils;
 import org.jspecify.annotations.Nullable;
 
 public class PlayerDollBlock extends Block implements EntityBlock {
@@ -41,6 +52,32 @@ public class PlayerDollBlock extends Block implements EntityBlock {
                 .strength(0.5f)
                 .noOcclusion();
         this(properties);
+    }
+
+    @Override
+    protected InteractionResult useItemOn(ItemStack itemStack, BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hitResult) {
+        if (level.isClientSide() && level.getBlockEntity(pos) instanceof PlayerDollBlockEntity blockEntity && player.isCreative()) {
+            ScreenProxy.openPlayerDollScreen(blockEntity);
+            return InteractionResult.SUCCESS;
+        }
+        return super.useItemOn(itemStack, state, level, pos, player, hand, hitResult);
+    }
+
+    @Override
+    protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hitResult) {
+        if (level.getBlockEntity(pos) instanceof PlayerDollBlockEntity blockEntity && !player.isCreative()) {
+            String longContent = blockEntity.getLongContent();
+            if (StringUtils.isBlank(longContent)) {
+                return super.useWithoutItem(state, level, pos, player, hitResult);
+            }
+            for (String s : StringUtils.split(longContent, '\n')) {
+                if (!level.isClientSide()) {
+                    player.sendSystemMessage(Component.literal(s));
+                }
+            }
+            return InteractionResult.SUCCESS;
+        }
+        return super.useWithoutItem(state, level, pos, player, hitResult);
     }
 
     @Override
@@ -79,6 +116,15 @@ public class PlayerDollBlock extends Block implements EntityBlock {
     @Nullable
     public BlockEntity newBlockEntity(BlockPos blockPos, BlockState blockState) {
         return new PlayerDollBlockEntity(blockPos, blockState);
+    }
+
+    @Override
+    public ItemStack getCloneItemStack(LevelReader level, BlockPos pos, BlockState state, boolean includeData, Player player) {
+        ItemStack stack = super.getCloneItemStack(level, pos, state, includeData, player);
+        if (includeData && level.getBlockEntity(pos) instanceof PlayerDollBlockEntity blockEntity) {
+            stack.set(DataComponents.PROFILE, blockEntity.getProfile());
+        }
+        return stack;
     }
 
     @Override

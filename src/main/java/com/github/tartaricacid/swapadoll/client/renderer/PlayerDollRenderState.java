@@ -11,4 +11,5 @@ public class PlayerDollRenderState extends BlockEntityRenderState {
     public Transformation transformation = Transformation.IDENTITY;
     public Pose pose = Pose.DEFAULT;
     public RenderType renderType;
+    public String shortContext;
 }

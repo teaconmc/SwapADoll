@@ -1,4 +1,7 @@
 {
   "item_group.swapadoll": "Swap A Doll",
-  "item.swapadoll.player_doll": "Player Doll"
+  "item.swapadoll.player_doll": "Player Doll",
+  "gui.swapadoll.player_doll.player_id": "Player ID",
+  "gui.swapadoll.player_doll.short_content": "Short Content",
+  "gui.swapadoll.player_doll.long_content": "Long Content"
 }

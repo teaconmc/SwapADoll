@@ -3,6 +3,7 @@ package com.github.tartaricacid.swapadoll;
 import com.github.tartaricacid.swapadoll.init.ModBlocks;
 import com.github.tartaricacid.swapadoll.init.ModItems;
 import com.github.tartaricacid.swapadoll.init.ModTabs;
+import com.github.tartaricacid.swapadoll.network.NetworkHandler;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
@@ -19,5 +20,7 @@ public class SwapADoll {
         ModBlocks.BLOCK_ENTITIES.register(eventBus);
         ModItems.ITEMS.register(eventBus);
         ModTabs.TABS.register(eventBus);
+
+        eventBus.addListener(NetworkHandler::registerPacket);
     }
 }
