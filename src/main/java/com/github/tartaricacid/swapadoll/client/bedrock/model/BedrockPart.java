@@ -1,24 +1,17 @@
 package com.github.tartaricacid.swapadoll.client.bedrock.model;
 
 import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import it.unimi.dsi.fastutil.objects.ObjectList;
+import it.unimi.dsi.fastutil.objects.Object2ObjectArrayMap;
 import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.util.LightCoordsUtil;
 import net.minecraft.util.Util;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.api.distmarker.OnlyIn;
 import org.joml.Matrix3f;
-import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
 import javax.annotation.Nullable;
-import java.util.Random;
 
-@OnlyIn(Dist.CLIENT)
 public class BedrockPart extends ModelPart {
     private static final int MAX_LIGHT_TEXTURE = LightCoordsUtil.pack(15, 15);
     private static final Vector3f[] NORMALS = Util.make(new Vector3f[6], array -> {
@@ -27,31 +20,16 @@ public class BedrockPart extends ModelPart {
         }
     });
 
-    /**
-     * 不能用原来的 cubes，因为无法继承类型 BedrockCube
-     * 必须重新定义一个 cubes 列表来存储 BedrockCube 对象。
-     */
-    public final ObjectList<BedrockCube> cubes = new ObjectArrayList<>();
-
     public @Nullable BedrockPart parent = null;
     public boolean illuminated = false;
     public boolean mirror = false;
 
     public BedrockPart() {
-        super(Lists.newArrayList(), Maps.newHashMap());
+        super(Lists.newArrayList(), new Object2ObjectArrayMap<>());
     }
 
-    public void setPos(float x, float y, float z) {
-        this.x = x;
-        this.y = y;
-        this.z = z;
-    }
-
-    public void render(PoseStack poseStack, VertexConsumer consumer, int lightmap, int overlay) {
-        this.render(poseStack, consumer, lightmap, overlay, 1.0F, 1.0F, 1.0F, 1.0F);
-    }
-
-    public void render(PoseStack poseStack, VertexConsumer consumer, int lightmap, int overlay, float red, float green, float blue, float alpha) {
+    @Override
+    public void render(PoseStack poseStack, VertexConsumer consumer, int lightmap, int overlay, int color) {
         int cubePackedLight = illuminated ? MAX_LIGHT_TEXTURE : lightmap;
         if (this.visible) {
             // 缩放过小时，直接退出渲染
@@ -64,11 +42,15 @@ public class BedrockPart extends ModelPart {
 
             if (!this.cubes.isEmpty() || !this.children.isEmpty()) {
                 poseStack.pushPose();
-                this.translateAndRotateAndScale(poseStack);
-                this.compile(poseStack.last(), consumer, cubePackedLight, overlay, red, green, blue, alpha);
+                this.translateAndRotate(poseStack);
+                if (!this.skipDraw) {
+                    this.compile(poseStack.last(), consumer, cubePackedLight, overlay, color);
+                }
 
-                for (BedrockPart part : this.children) {
-                    part.render(poseStack, consumer, cubePackedLight, overlay, red, green, blue, alpha);
+                for (var part : this.children.values()) {
+                    if (part instanceof BedrockPart bedrockPart) {
+                        bedrockPart.render(poseStack, consumer, cubePackedLight, overlay, color);
+                    }
                 }
 
                 poseStack.popPose();
@@ -76,38 +58,8 @@ public class BedrockPart extends ModelPart {
         }
     }
 
-    /**
-     * 不带缩放的平移和旋转
-     */
-    @Deprecated
-    @SuppressWarnings("all")
-    public void translateAndRotate(PoseStack poseStack) {
-        poseStack.translate((this.x / 16.0F) + this.offsetX, (this.y / 16.0F) + this.offsetY, (this.z / 16.0F) + this.offsetZ);
-        if (this.xRot != 0.0F || this.yRot != 0.0F || this.zRot != 0.0F) {
-            poseStack.last().pose().rotateZYX(this.zRot, this.yRot, this.xRot);
-            poseStack.last().normal().rotateZYX(this.zRot, this.yRot, this.xRot);
-        }
-    }
-
-    public Vector3f getTranslateAndRotateVector3f() {
-        Quaternionf quaternionf = new Quaternionf();
-        if (this.xRot != 0.0F || this.yRot != 0.0F || this.zRot != 0.0F) {
-            quaternionf.rotateZYX(this.zRot, this.yRot, this.xRot);
-        }
-        float finalX = (this.x / 16.0F) + this.offsetX;
-        float finalY = (this.y / 16.0F) + this.offsetY;
-        float finalZ = (this.z / 16.0F) + this.offsetZ;
-        Vector3f translation = new Vector3f(finalX, finalY, finalZ);
-        return quaternionf.transform(translation);
-    }
-
-    public void translateAndRotateAndScale(PoseStack poseStack) {
-        translateAndRotate(poseStack);
-        poseStack.mulPose(additionalQuaternion);
-        poseStack.scale(xScale, yScale, zScale);
-    }
-
-    private void compile(PoseStack.Pose pose, VertexConsumer consumer, int lightmap, int overlay, float red, float green, float blue, float alpha) {
+    @Override
+    public void compile(PoseStack.Pose pose, VertexConsumer consumer, int lightmap, int overlay, int color) {
         Matrix3f normal = pose.normal();
         NORMALS[0].set(-normal.m10, -normal.m11, -normal.m12);
         NORMALS[1].set(normal.m10, normal.m11, normal.m12);
@@ -115,40 +67,22 @@ public class BedrockPart extends ModelPart {
         NORMALS[3].set(normal.m20, normal.m21, normal.m22);
         NORMALS[4].set(-normal.m00, -normal.m01, -normal.m02);
         NORMALS[5].set(normal.m00, normal.m01, normal.m02);
-        for (BedrockCube bedrockCube : this.cubes) {
-            bedrockCube.compile(pose, NORMALS, consumer, lightmap, overlay, red, green, blue, alpha);
+        for (var cube : this.cubes) {
+            if (cube instanceof BedrockCube bedrockCube) {
+                bedrockCube.compile(pose, NORMALS, consumer, lightmap, overlay, color);
+            }
         }
     }
 
-    public BedrockCube getRandomCube(Random random) {
-        return this.cubes.get(random.nextInt(this.cubes.size()));
-    }
-
-    public boolean isEmpty() {
-        return this.cubes.isEmpty();
-    }
-
-    public void setInitRotationAngle(float x, float y, float z) {
-        this.initRotX = x;
-        this.initRotY = y;
-        this.initRotZ = z;
-    }
-
-    public float getInitRotX() {
-        return initRotX;
-    }
-
-    public float getInitRotY() {
-        return initRotY;
-    }
-
-    public float getInitRotZ() {
-        return initRotZ;
-    }
-
-    public void addChild(BedrockPart model) {
-        this.children.add(model);
+    public void addChild(String name, BedrockPart model) {
+        this.children.put(name, model);
         model.parent = this;
+    }
+
+    public void addCube(BedrockCube cube) {
+        if (cube instanceof ModelPart.Cube c) {
+            this.cubes.add(c);
+        }
     }
 
     @Nullable

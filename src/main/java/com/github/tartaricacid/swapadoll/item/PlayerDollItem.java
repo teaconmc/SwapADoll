@@ -5,13 +5,8 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.BlockItem;
-import net.minecraft.world.level.block.Block;
 
 public class PlayerDollItem extends BlockItem {
-    public PlayerDollItem(Block block, Properties properties) {
-        super(block, properties);
-    }
-
     public PlayerDollItem(Identifier id) {
         var key = ResourceKey.create(Registries.ITEM, id);
         var properties = new Properties().setId(key);

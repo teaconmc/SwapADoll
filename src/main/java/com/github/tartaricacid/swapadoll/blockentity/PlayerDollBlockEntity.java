@@ -3,6 +3,8 @@ package com.github.tartaricacid.swapadoll.blockentity;
 import com.github.tartaricacid.swapadoll.init.ModBlocks;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
+import net.minecraft.core.component.DataComponentGetter;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
@@ -51,6 +53,20 @@ public class PlayerDollBlockEntity extends BlockEntity {
     @Override
     public Packet<ClientGamePacketListener> getUpdatePacket() {
         return ClientboundBlockEntityDataPacket.create(this);
+    }
+
+    @Override
+    protected void applyImplicitComponents(DataComponentGetter components) {
+        super.applyImplicitComponents(components);
+        this.profile = components.get(DataComponents.PROFILE);
+    }
+
+    public @Nullable ResolvableProfile getProfile() {
+        return profile;
+    }
+
+    public Pose getPose() {
+        return pose;
     }
 
     public enum Pose implements StringRepresentable {
