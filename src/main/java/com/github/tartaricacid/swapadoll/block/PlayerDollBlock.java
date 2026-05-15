@@ -6,7 +6,6 @@ import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.InteractionHand;
@@ -27,7 +26,6 @@ import net.minecraft.world.level.block.state.properties.RotationSegment;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
-import org.apache.commons.lang3.StringUtils;
 import org.jspecify.annotations.Nullable;
 
 public class PlayerDollBlock extends Block implements EntityBlock {
@@ -56,7 +54,7 @@ public class PlayerDollBlock extends Block implements EntityBlock {
 
     @Override
     protected InteractionResult useItemOn(ItemStack itemStack, BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hitResult) {
-        if (level.isClientSide() && level.getBlockEntity(pos) instanceof PlayerDollBlockEntity blockEntity && player.isCreative()) {
+        if (level.isClientSide() && level.getBlockEntity(pos) instanceof PlayerDollBlockEntity blockEntity && player.isCreative() && !player.isSecondaryUseActive()) {
             ScreenProxy.openPlayerDollScreen(blockEntity);
             return InteractionResult.SUCCESS;
         }
@@ -65,16 +63,9 @@ public class PlayerDollBlock extends Block implements EntityBlock {
 
     @Override
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hitResult) {
-        if (level.getBlockEntity(pos) instanceof PlayerDollBlockEntity blockEntity && !player.isCreative()) {
-            String longContent = blockEntity.getLongContent();
-            if (StringUtils.isBlank(longContent)) {
-                return super.useWithoutItem(state, level, pos, player, hitResult);
-            }
-            for (String s : StringUtils.split(longContent, '\n')) {
-                if (!level.isClientSide()) {
-                    player.sendSystemMessage(Component.literal(s));
-                }
-            }
+        if (player.isCreative() && player.isSecondaryUseActive() && level.getBlockEntity(pos) instanceof PlayerDollBlockEntity blockEntity) {
+            PlayerDollBlockEntity.Pose next = blockEntity.getPose().next();
+            blockEntity.setPose(next);
             return InteractionResult.SUCCESS;
         }
         return super.useWithoutItem(state, level, pos, player, hitResult);
@@ -121,7 +112,7 @@ public class PlayerDollBlock extends Block implements EntityBlock {
     @Override
     public ItemStack getCloneItemStack(LevelReader level, BlockPos pos, BlockState state, boolean includeData, Player player) {
         ItemStack stack = super.getCloneItemStack(level, pos, state, includeData, player);
-        if (includeData && level.getBlockEntity(pos) instanceof PlayerDollBlockEntity blockEntity) {
+        if (level.getBlockEntity(pos) instanceof PlayerDollBlockEntity blockEntity) {
             stack.set(DataComponents.PROFILE, blockEntity.getProfile());
         }
         return stack;

@@ -12,8 +12,7 @@ import net.minecraft.world.entity.player.Player;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 public record SetPlayerDollDataPackage(
-        BlockPos pos,
-        String playerId, String shortContent, String longContent
+        BlockPos pos, String playerId, String shortContent
 ) implements CustomPacketPayload {
     public static final Type<SetPlayerDollDataPackage> TYPE = new Type<>(
             Identifier.fromNamespaceAndPath(SwapADoll.MOD_ID, "set_player_doll_data"));
@@ -22,7 +21,6 @@ public record SetPlayerDollDataPackage(
             BlockPos.STREAM_CODEC, SetPlayerDollDataPackage::pos,
             ByteBufCodecs.STRING_UTF8, SetPlayerDollDataPackage::playerId,
             ByteBufCodecs.STRING_UTF8, SetPlayerDollDataPackage::shortContent,
-            ByteBufCodecs.STRING_UTF8, SetPlayerDollDataPackage::longContent,
             SetPlayerDollDataPackage::new
     );
 
@@ -36,7 +34,7 @@ public record SetPlayerDollDataPackage(
                     return;
                 }
                 if (player.level().getBlockEntity(message.pos) instanceof PlayerDollBlockEntity doll) {
-                    doll.setData(message.playerId, message.shortContent, message.longContent);
+                    doll.setData(message.playerId, message.shortContent);
                 }
             });
         }

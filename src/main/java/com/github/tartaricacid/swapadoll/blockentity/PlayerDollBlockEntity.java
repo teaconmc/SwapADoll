@@ -26,7 +26,6 @@ public class PlayerDollBlockEntity extends BlockEntity {
     private static final String TAG_PROFILE = "profile";
     private static final String TAG_POSE = "pose";
     private static final String TAG_SHORT_CONTENT = "short_content";
-    private static final String TAG_LONG_CONTENT = "long_content";
 
     private @Nullable ResolvableProfile profile;
     private Pose pose = Pose.DEFAULT;
@@ -34,10 +33,6 @@ public class PlayerDollBlockEntity extends BlockEntity {
      * 简短内容，渲染在玩偶头顶
      */
     private String shortContent = "";
-    /**
-     * 长内容，右键玩偶后，打印在玩家的聊天框里，支持多行，使用 \n 分隔
-     */
-    private String longContent = "";
 
     public PlayerDollBlockEntity(BlockPos blockPos, BlockState blockState) {
         super(ModBlocks.PLAYER_DOLL_BE.get(), blockPos, blockState);
@@ -49,7 +44,6 @@ public class PlayerDollBlockEntity extends BlockEntity {
         output.storeNullable(TAG_PROFILE, ResolvableProfile.CODEC, this.profile);
         output.storeNullable(TAG_POSE, Pose.CODEC, this.pose);
         output.store(TAG_SHORT_CONTENT, Codec.STRING, this.shortContent);
-        output.store(TAG_LONG_CONTENT, Codec.STRING, this.longContent);
     }
 
     @Override
@@ -58,7 +52,6 @@ public class PlayerDollBlockEntity extends BlockEntity {
         this.profile = input.read(TAG_PROFILE, ResolvableProfile.CODEC).orElse(null);
         this.pose = input.read(TAG_POSE, Pose.CODEC).orElse(Pose.DEFAULT);
         this.shortContent = input.read(TAG_SHORT_CONTENT, Codec.STRING).orElse("");
-        this.longContent = input.read(TAG_LONG_CONTENT, Codec.STRING).orElse("");
     }
 
     @Override
@@ -98,29 +91,34 @@ public class PlayerDollBlockEntity extends BlockEntity {
         return shortContent;
     }
 
-    public String getLongContent() {
-        return longContent;
-    }
-
-    public void setData(String playerId, String shortContent, String longContent) {
+    public void setData(String playerId, String shortContent) {
         if (StringUtil.isNullOrEmpty(playerId)) {
             this.profile = null;
         } else {
             this.profile = ResolvableProfile.createUnresolved(playerId);
         }
         this.shortContent = shortContent;
-        this.longContent = longContent;
+        this.markDirty();
+    }
+
+    public void setPose(Pose pose) {
+        this.pose = pose;
         this.markDirty();
     }
 
     public enum Pose implements StringRepresentable {
-        DEFAULT;
+        DEFAULT, CASUAL_WAVE, CHEER, PERFECT_BALANCE, SHY_POSE, ZOMBIE;
 
         public static final EnumCodec<Pose> CODEC = StringRepresentable.fromEnum(Pose::values);
 
         @Override
         public String getSerializedName() {
             return this.name().toLowerCase(Locale.ENGLISH);
+        }
+
+        public Pose next() {
+            int nextOrdinal = (this.ordinal() + 1) % values().length;
+            return values()[nextOrdinal];
         }
     }
 }

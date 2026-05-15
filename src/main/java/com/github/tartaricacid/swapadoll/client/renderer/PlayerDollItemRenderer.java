@@ -21,13 +21,9 @@ import java.util.function.Consumer;
 
 public class PlayerDollItemRenderer implements SpecialModelRenderer<RenderInfo> {
     private final PlayerSkinRenderCache playerSkinRenderCache;
-    private final PlayerDollModel slimModel;
-    private final PlayerDollModel wideModel;
 
     public PlayerDollItemRenderer(PlayerSkinRenderCache playerSkinRenderCache) {
         this.playerSkinRenderCache = playerSkinRenderCache;
-        this.slimModel = PlayerDollModel.SLIM_MODEL.get();
-        this.wideModel = PlayerDollModel.WIDE_MODEL.get();
     }
 
     @Override
@@ -39,15 +35,11 @@ public class PlayerDollItemRenderer implements SpecialModelRenderer<RenderInfo> 
         PlayerDollModel renderModel;
         if (argument == null) {
             renderType = PlayerSkinRenderCache.DEFAULT_PLAYER_SKIN_RENDER_TYPE;
-            renderModel = slimModel;
+            renderModel = PlayerDollModel.getDefaultModel(true);
         } else {
             renderType = argument.renderType();
             PlayerModelType model = argument.playerSkin().model();
-            if (model == PlayerModelType.SLIM) {
-                renderModel = slimModel;
-            } else {
-                renderModel = wideModel;
-            }
+            renderModel = PlayerDollModel.getDefaultModel(model == PlayerModelType.SLIM);
         }
         collector.submitModel(renderModel, Unit.INSTANCE, poseStack, renderType,
                 light, OverlayTexture.NO_OVERLAY, outlineColor, null);
@@ -56,7 +48,7 @@ public class PlayerDollItemRenderer implements SpecialModelRenderer<RenderInfo> 
     @Override
     public void getExtents(Consumer<Vector3fc> output) {
         PoseStack poseStack = new PoseStack();
-        this.wideModel.root().getExtentsForGui(poseStack, output);
+        PlayerDollModel.getDefaultModel(false).root().getExtentsForGui(poseStack, output);
     }
 
     @Override

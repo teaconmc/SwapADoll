@@ -18,8 +18,7 @@ public class PlayerDollScreen extends Screen {
     private final PlayerDollBlockEntity blockEntity;
 
     private EditBox playerId;
-    private EditBox shortContent;
-    private MultiLineEditBox longContent;
+    private MultiLineEditBox shortContent;
 
     public PlayerDollScreen(PlayerDollBlockEntity blockEntity) {
         super(Component.literal("Player Doll"));
@@ -34,7 +33,7 @@ public class PlayerDollScreen extends Screen {
     @Override
     protected void init() {
         int xo = (this.width - 240) / 2;
-        int yo = (this.height - 200) / 2;
+        int yo = (this.height - 150) / 2;
 
         ResolvableProfile profile = this.blockEntity.getProfile();
         this.playerId = new EditBox(this.font, xo, yo, 240, 20, Component.literal("Player Name"));
@@ -45,22 +44,18 @@ public class PlayerDollScreen extends Screen {
             this.playerId.setValue("");
         }
 
-        this.shortContent = new EditBox(this.font, xo, yo + 35, 240, 20, Component.literal("Short Content"));
-        this.shortContent.setMaxLength(512);
+        this.shortContent = MultiLineEditBox.builder()
+                .setX(xo).setY(yo + 35)
+                .build(this.font, 240, 100, CommonComponents.EMPTY);
         this.shortContent.setValue(blockEntity.getShortContent());
-
-        this.longContent = MultiLineEditBox.builder()
-                .setX(xo).setY(yo + 70)
-                .build(this.font, 240, 70, CommonComponents.EMPTY);
-        this.longContent.setValue(blockEntity.getLongContent());
+        this.shortContent.setLineLimit(16);
 
         this.addRenderableWidget(this.playerId);
         this.addRenderableWidget(this.shortContent);
-        this.addRenderableWidget(this.longContent);
 
         this.addRenderableWidget(
                 Button.builder(CommonComponents.GUI_CANCEL, button -> this.onClose())
-                        .bounds(xo, yo + 150, 115, 20)
+                        .bounds(xo, yo + 145, 115, 20)
                         .build()
         );
 
@@ -69,11 +64,10 @@ public class PlayerDollScreen extends Screen {
                     ClientPacketDistributor.sendToServer(new SetPlayerDollDataPackage(
                             pos,
                             this.playerId.getValue(),
-                            this.shortContent.getValue(),
-                            this.longContent.getValue()
+                            this.shortContent.getValue()
                     ));
                     this.onClose();
-                }).bounds(xo + 125, yo + 150, 115, 20).build()
+                }).bounds(xo + 125, yo + 145, 115, 20).build()
         );
     }
 
@@ -81,13 +75,11 @@ public class PlayerDollScreen extends Screen {
     public void resize(int width, int height) {
         String oldPlayerId = this.playerId.getValue();
         String oldShortContent = this.shortContent.getValue();
-        String oldLongContent = this.longContent.getValue();
 
         this.init(width, height);
 
         this.playerId.setValue(oldPlayerId);
         this.shortContent.setValue(oldShortContent);
-        this.longContent.setValue(oldLongContent);
     }
 
     @Override
@@ -101,8 +93,5 @@ public class PlayerDollScreen extends Screen {
 
         graphics.text(font, Component.translatable("gui.swapadoll.player_doll.short_content"),
                 this.shortContent.getX() + 2, this.shortContent.getY() - 10, color);
-
-        graphics.text(font, Component.translatable("gui.swapadoll.player_doll.long_content"),
-                this.longContent.getX() + 2, this.longContent.getY() - 10, color);
     }
 }
